@@ -1,0 +1,14 @@
+/Users/aktenir/C#Projects/MyCompiler/bin/Debug/net10.0/MyCompiler
+/Users/aktenir/C#Projects/MyCompiler/bin/Debug/net10.0/MyCompiler.deps.json
+/Users/aktenir/C#Projects/MyCompiler/bin/Debug/net10.0/MyCompiler.runtimeconfig.json
+/Users/aktenir/C#Projects/MyCompiler/bin/Debug/net10.0/MyCompiler.dll
+/Users/aktenir/C#Projects/MyCompiler/bin/Debug/net10.0/MyCompiler.pdb
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.GeneratedMSBuildEditorConfig.editorconfig
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.AssemblyInfoInputs.cache
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.AssemblyInfo.cs
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.csproj.CoreCompileInputs.cache
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.dll
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/refint/MyCompiler.dll
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.pdb
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/MyCompiler.genruntimeconfig.cache
+/Users/aktenir/C#Projects/MyCompiler/obj/Debug/net10.0/ref/MyCompiler.dll
