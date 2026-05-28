@@ -54,7 +54,7 @@ internal static class Program
             {
                 Console.Error.WriteLine("Найдены синтаксические ошибки:");
                 foreach (var error in parser.Errors)
-                    Console.Error.WriteLine($"- {error}");
+                    Console.Error.WriteLine(error);
                 return 1;
             }
 
@@ -63,7 +63,7 @@ internal static class Program
             {
                 Console.Error.WriteLine("Найдены семантические ошибки:");
                 foreach (var error in semanticErrors)
-                    Console.Error.WriteLine($"- {error}");
+                    Console.Error.WriteLine(error);
                 return 1;
             }
 
