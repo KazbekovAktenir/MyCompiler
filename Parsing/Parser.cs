@@ -16,12 +16,18 @@ public class Parser
     private readonly List<Token> _tokens;
     private int _position;
 
+    // Список всех ошибок
+    public List<string> Errors { get; } = new();
+
     public Parser(List<Token> tokens)
     {
         _tokens = tokens;
     }
 
-    private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens[^1];
+    private Token Current =>
+        _position < _tokens.Count
+            ? _tokens[_position]
+            : _tokens[^1];
 
     private void SkipNewLines()
     {
@@ -29,34 +35,86 @@ public class Parser
             _position++;
     }
 
-    private Token Match(TokenType type)
+    // Безопасная проверка токена
+    private bool Match(TokenType type)
     {
         SkipNewLines();
+
         if (Current.Type != type)
-            throw new ParserException($"Ожидался {type}, получено {Current.Type} ('{Current.Value}').");
-        var t = Current;
+        {
+            Errors.Add(
+                $"Синтаксическая ошибка: ожидался {type}, " +
+                $"получено {Current.Type} ('{Current.Value}')"
+            );
+
+            Synchronize();
+            return false;
+        }
+
         _position++;
-        return t;
+        return true;
+    }
+
+    // Получение значения текущего токена
+    private string Consume(TokenType type)
+    {
+        SkipNewLines();
+
+        if (Current.Type != type)
+        {
+            Errors.Add(
+                $"Синтаксическая ошибка: ожидался {type}, " +
+                $"получено {Current.Type} ('{Current.Value}')"
+            );
+
+            Synchronize();
+            return "";
+        }
+
+        string value = Current.Value;
+        _position++;
+        return value;
+    }
+
+    // Восстановление после ошибки
+    private void Synchronize()
+    {
+        while (Current.Type != TokenType.NewLine &&
+               Current.Type != TokenType.EOF)
+        {
+            _position++;
+        }
+
+        if (Current.Type == TokenType.NewLine)
+            _position++;
     }
 
     public ProgramNode Parse()
     {
         var program = new ProgramNode();
+
         SkipNewLines();
+
         while (Current.Type != TokenType.EOF)
         {
             SkipNewLines();
+
             if (Current.Type == TokenType.EOF)
                 break;
-            var node = ParseStatement();
-            program.Nodes.Add(node);
+
+            var stmt = ParseStatement();
+
+            if (stmt != null)
+                program.Nodes.Add(stmt);
         }
+
         return program;
     }
 
-    private Node ParseStatement()
+    private Node? ParseStatement()
     {
         SkipNewLines();
+
         return Current.Type switch
         {
             TokenType.Variable => ParseVariableDeclaration(),
@@ -67,268 +125,365 @@ public class Parser
             TokenType.Function => ParseFunction(),
             TokenType.Return => ParseReturn(),
             TokenType.Input => ParseInput(),
-            _ => throw new ParserException($"Неожиданный токен: {Current.Type} ('{Current.Value}').")
+            _ => HandleUnexpectedToken()
         };
     }
 
-    private VarDeclNode ParseVariableDeclaration()
+    private Node? HandleUnexpectedToken()
     {
-        Match(TokenType.Variable);
-        var name = Match(TokenType.Identifier).Value;
-        Match(TokenType.Assign);
-        var value = ParseExpressionUntilLineEnd();
-        return new VarDeclNode { Name = name, Value = value };
+        Errors.Add(
+            $"Неожиданный токен: {Current.Type} ('{Current.Value}')"
+        );
+
+        Synchronize();
+        return null;
     }
 
-    private PrintNode ParsePrint()
+    private VarDeclNode? ParseVariableDeclaration()
     {
-        Match(TokenType.Print);
-        Match(TokenType.LPAREN);
-        var content = ParseBalancedUntilClosingParen();
-        return new PrintNode { Content = content };
-    }
+        if (!Match(TokenType.Variable))
+            return null;
 
-    private InputNode ParseInput()
-    {
-        Match(TokenType.Input);
-        Match(TokenType.LPAREN);
-        var name = Match(TokenType.Identifier).Value;
-        Match(TokenType.RPAREN);
-        return new InputNode { VariableName = name };
-    }
+        string name = Consume(TokenType.Identifier);
 
-    private ReturnNode ParseReturn()
-    {
-        Match(TokenType.Return);
-        var expr = ParseExpressionUntilLineEnd();
-        return new ReturnNode { Expression = expr };
-    }
+        if (!Match(TokenType.Assign))
+            return null;
 
-    private IfNode ParseIf()
-    {
-        Match(TokenType.If);
-        Match(TokenType.LPAREN);
-        var cond = ParseBalancedUntilClosingParen();
-        Match(TokenType.Then);
+        string value = ParseExpressionUntilLineEnd();
 
-        var node = new IfNode { Condition = cond };
-        SkipNewLines();
-        while (Current.Type is not (TokenType.Else or TokenType.End))
+        return new VarDeclNode
         {
-            if (Current.Type == TokenType.NewLine)
-            {
-                _position++;
-                continue;
-            }
-            node.ThenBody.Add(ParseStatement());
+            Name = name,
+            Value = value
+        };
+    }
+
+    private PrintNode? ParsePrint()
+    {
+        if (!Match(TokenType.Print))
+            return null;
+
+        if (!Match(TokenType.LPAREN))
+            return null;
+
+        string content = ParseBalancedUntilClosingParen();
+
+        return new PrintNode
+        {
+            Content = content
+        };
+    }
+
+    private InputNode? ParseInput()
+    {
+        if (!Match(TokenType.Input))
+            return null;
+
+        if (!Match(TokenType.LPAREN))
+            return null;
+
+        string name = Consume(TokenType.Identifier);
+
+        if (!Match(TokenType.RPAREN))
+            return null;
+
+        return new InputNode
+        {
+            VariableName = name
+        };
+    }
+
+    private ReturnNode? ParseReturn()
+    {
+        if (!Match(TokenType.Return))
+            return null;
+
+        string expr = ParseExpressionUntilLineEnd();
+
+        return new ReturnNode
+        {
+            Expression = expr
+        };
+    }
+
+    private IfNode? ParseIf()
+    {
+        if (!Match(TokenType.If))
+            return null;
+
+        if (!Match(TokenType.LPAREN))
+            return null;
+
+        string condition = ParseBalancedUntilClosingParen();
+
+        if (!Match(TokenType.Then))
+            return null;
+
+        var node = new IfNode
+        {
+            Condition = condition
+        };
+
+        SkipNewLines();
+
+        while (Current.Type != TokenType.Else &&
+               Current.Type != TokenType.End &&
+               Current.Type != TokenType.EOF)
+        {
+            var stmt = ParseStatement();
+
+            if (stmt != null)
+                node.ThenBody.Add(stmt);
+
             SkipNewLines();
         }
 
         if (Current.Type == TokenType.Else)
         {
             Match(TokenType.Else);
+
             SkipNewLines();
-            while (Current.Type != TokenType.End)
+
+            while (Current.Type != TokenType.End &&
+                   Current.Type != TokenType.EOF)
             {
-                if (Current.Type == TokenType.NewLine)
-                {
-                    _position++;
-                    continue;
-                }
-                node.ElseBody.Add(ParseStatement());
+                var stmt = ParseStatement();
+
+                if (stmt != null)
+                    node.ElseBody.Add(stmt);
+
                 SkipNewLines();
             }
         }
 
-        Match(TokenType.End);
+        if (!Match(TokenType.End))
+            return null;
+
         return node;
     }
 
-    private WhileNode ParseWhile()
+    private WhileNode? ParseWhile()
     {
-        Match(TokenType.LoopWhile);
-        Match(TokenType.LPAREN);
-        var cond = ParseBalancedUntilClosingParen();
-        var node = new WhileNode { Condition = cond };
-        SkipNewLines();
-        while (Current.Type != TokenType.End)
+        if (!Match(TokenType.LoopWhile))
+            return null;
+
+        if (!Match(TokenType.LPAREN))
+            return null;
+
+        string condition = ParseBalancedUntilClosingParen();
+
+        var node = new WhileNode
         {
-            if (Current.Type == TokenType.NewLine)
-            {
-                _position++;
-                continue;
-            }
-            node.Body.Add(ParseStatement());
+            Condition = condition
+        };
+
+        SkipNewLines();
+
+        while (Current.Type != TokenType.End &&
+               Current.Type != TokenType.EOF)
+        {
+            var stmt = ParseStatement();
+
+            if (stmt != null)
+                node.Body.Add(stmt);
+
             SkipNewLines();
         }
-        Match(TokenType.End);
+
+        if (!Match(TokenType.End))
+            return null;
+
         return node;
     }
 
-    private ForNode ParseFor()
+    private ForNode? ParseFor()
     {
-        Match(TokenType.LoopFrom);
-        SkipNewLines();
+        if (!Match(TokenType.LoopFrom))
+            return null;
 
-        string iterator;
-        string fromExpr;
+        string iterator = "i";
+        string fromExpr = "";
 
         if (Current.Type == TokenType.Identifier &&
             _position + 1 < _tokens.Count &&
             _tokens[_position + 1].Type == TokenType.Assign)
         {
-            iterator = Match(TokenType.Identifier).Value;
-            Match(TokenType.Assign);
+            iterator = Consume(TokenType.Identifier);
+
+            if (!Match(TokenType.Assign))
+                return null;
+
             fromExpr = ParseExpressionUntilTo();
         }
         else
         {
-            iterator = "i";
             fromExpr = ParseExpressionUntilTo();
         }
 
-        Match(TokenType.To);
-        var toExpr = ParseExpressionUntilLineEnd();
-        var node = new ForNode { Iterator = iterator, From = fromExpr, To = toExpr };
-        SkipNewLines();
-        while (Current.Type != TokenType.End)
+        if (!Match(TokenType.To))
+            return null;
+
+        string toExpr = ParseExpressionUntilLineEnd();
+
+        var node = new ForNode
         {
-            if (Current.Type == TokenType.NewLine)
-            {
-                _position++;
-                continue;
-            }
-            node.Body.Add(ParseStatement());
+            Iterator = iterator,
+            From = fromExpr,
+            To = toExpr
+        };
+
+        SkipNewLines();
+
+        while (Current.Type != TokenType.End &&
+               Current.Type != TokenType.EOF)
+        {
+            var stmt = ParseStatement();
+
+            if (stmt != null)
+                node.Body.Add(stmt);
+
             SkipNewLines();
         }
-        Match(TokenType.End);
+
+        if (!Match(TokenType.End))
+            return null;
+
         return node;
     }
 
-    private FunctionNode ParseFunction()
+    private FunctionNode? ParseFunction()
     {
-        Match(TokenType.Function);
-        var name = Match(TokenType.Identifier).Value;
-        Match(TokenType.LPAREN);
+        if (!Match(TokenType.Function))
+            return null;
+
+        string name = Consume(TokenType.Identifier);
+
+        if (!Match(TokenType.LPAREN))
+            return null;
+
         var parameters = new List<string>();
+
         SkipNewLines();
+
         if (Current.Type != TokenType.RPAREN)
         {
-            parameters.Add(Match(TokenType.Identifier).Value);
+            parameters.Add(
+                Consume(TokenType.Identifier)
+            );
+
             while (Current.Type == TokenType.Comma)
             {
                 Match(TokenType.Comma);
-                SkipNewLines();
-                parameters.Add(Match(TokenType.Identifier).Value);
+
+                parameters.Add(
+                    Consume(TokenType.Identifier)
+                );
             }
         }
-        Match(TokenType.RPAREN);
 
-        var node = new FunctionNode { Name = name, Parameters = parameters };
-        SkipNewLines();
-        while (Current.Type != TokenType.End)
+        if (!Match(TokenType.RPAREN))
+            return null;
+
+        var node = new FunctionNode
         {
-            if (Current.Type == TokenType.NewLine)
-            {
-                _position++;
-                continue;
-            }
-            node.Body.Add(ParseStatement());
+            Name = name,
+            Parameters = parameters
+        };
+
+        SkipNewLines();
+
+        while (Current.Type != TokenType.End &&
+               Current.Type != TokenType.EOF)
+        {
+            var stmt = ParseStatement();
+
+            if (stmt != null)
+                node.Body.Add(stmt);
+
             SkipNewLines();
         }
-        Match(TokenType.End);
+
+        if (!Match(TokenType.End))
+            return null;
+
         return node;
     }
 
-    /// <summary>Выражение до ключевого слова «до» (для цикла).</summary>
     private string ParseExpressionUntilTo()
     {
         var sb = new StringBuilder();
-        int depth = 0;
-        while (Current.Type != TokenType.EOF)
+
+        while (Current.Type != TokenType.To &&
+               Current.Type != TokenType.EOF)
         {
-            if (depth == 0 && Current.Type == TokenType.To)
-                break;
-            AppendToken(sb, ref depth);
+            sb.Append(FormatToken(Current)).Append(" ");
+            _position++;
         }
+
         return sb.ToString().Trim();
     }
 
     private string ParseExpressionUntilLineEnd()
     {
         var sb = new StringBuilder();
-        int depth = 0;
-        while (Current.Type != TokenType.EOF)
+
+        while (Current.Type != TokenType.NewLine &&
+               Current.Type != TokenType.EOF)
         {
-            if (depth == 0 && Current.Type == TokenType.NewLine)
-                break;
-            if (depth == 0 && Current.Type == TokenType.EOF)
-                break;
-            AppendToken(sb, ref depth);
+            sb.Append(FormatToken(Current)).Append(" ");
+            _position++;
         }
+
         if (Current.Type == TokenType.NewLine)
             _position++;
+
         return sb.ToString().Trim();
     }
 
-    /// <summary>Содержимое в скобках с учётом вложенности (условие, аргументы вывести).</summary>
     private string ParseBalancedUntilClosingParen()
     {
         var sb = new StringBuilder();
+
         int depth = 1;
+
         while (Current.Type != TokenType.EOF)
         {
             if (Current.Type == TokenType.LPAREN)
             {
                 depth++;
-                sb.Append('(');
-                _position++;
-                continue;
             }
-            if (Current.Type == TokenType.RPAREN)
+            else if (Current.Type == TokenType.RPAREN)
             {
                 depth--;
-                _position++;
+
                 if (depth == 0)
+                {
+                    _position++;
                     break;
-                sb.Append(')');
-                continue;
+                }
             }
-            AppendToken(sb, ref depth);
+
+            sb.Append(FormatToken(Current)).Append(" ");
+            _position++;
         }
+
         if (depth != 0)
-            throw new ParserException("Незакрытая скобка в выражении.");
+        {
+            Errors.Add(
+                "Синтаксическая ошибка: незакрытая скобка."
+            );
+        }
+
         return sb.ToString().Trim();
     }
 
-    private void AppendToken(StringBuilder sb, ref int depth)
+    private static string FormatToken(Token token)
     {
-        switch (Current.Type)
+        return token.Type switch
         {
-            case TokenType.LPAREN:
-                depth++;
-                sb.Append('(');
-                _position++;
-                break;
-            case TokenType.RPAREN:
-                depth--;
-                sb.Append(')');
-                _position++;
-                break;
-            case TokenType.String:
-                sb.Append('"').Append(Current.Value).Append('"');
-                _position++;
-                break;
-            case TokenType.Comma:
-                sb.Append(", ");
-                _position++;
-                break;
-            default:
-                if (sb.Length > 0 && sb[^1] is not ('(' or ' ' or ','))
-                    sb.Append(' ');
-                sb.Append(Current.Value);
-                _position++;
-                break;
-        }
+            TokenType.String => $"\"{token.Value}\"",
+            TokenType.Comma => ",",
+            _ => token.Value
+        };
     }
 }

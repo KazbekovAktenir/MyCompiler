@@ -49,7 +49,23 @@ internal static class Program
             var tokens = lexer.Tokenize();
             var parser = new Parser(tokens);
             var root = parser.Parse();
-            SemanticAnalyzer.Analyze(root);
+
+            if (parser.Errors.Count > 0)
+            {
+                Console.Error.WriteLine("Найдены синтаксические ошибки:");
+                foreach (var error in parser.Errors)
+                    Console.Error.WriteLine($"- {error}");
+                return 1;
+            }
+
+            var semanticErrors = SemanticAnalyzer.AnalyzeAll(root);
+            if (semanticErrors.Count > 0)
+            {
+                Console.Error.WriteLine("Найдены семантические ошибки:");
+                foreach (var error in semanticErrors)
+                    Console.Error.WriteLine($"- {error}");
+                return 1;
+            }
 
             var baseName = Path.GetFileNameWithoutExtension(inputPath);
             var outDir = Path.GetDirectoryName(Path.GetFullPath(inputPath)) ?? ".";

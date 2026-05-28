@@ -101,3 +101,4 @@
 /Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/obj/Debug/net10.0/MyCompiler.Tests.pdb
 /Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/obj/Debug/net10.0/MyCompiler.Tests.genruntimeconfig.cache
 /Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/obj/Debug/net10.0/ref/MyCompiler.Tests.dll
+/Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/obj/Debug/net10.0/MyCompiler.Tests.sourcelink.json

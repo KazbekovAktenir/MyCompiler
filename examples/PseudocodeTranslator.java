@@ -10,7 +10,7 @@ public class PseudocodeTranslator {
         for (int i = 1; i <= 5; i++) {
             System.out.println("Итерация: " + i);
         }
-        System.out.println("Сумма: " + сумма(x, y));
+        System.out.println("Сумма: " + сумма ( x , y ));
     }
     public static int сумма(int a, int b) {
         var результат = a + b;

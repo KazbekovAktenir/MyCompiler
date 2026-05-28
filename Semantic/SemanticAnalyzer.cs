@@ -21,16 +21,27 @@ public static class SemanticAnalyzer
 
     public static void Analyze(ProgramNode program)
     {
+        var errors = AnalyzeAll(program);
+        if (errors.Count > 0)
+            throw new SemanticException(errors[0]);
+    }
+
+    public static List<string> AnalyzeAll(ProgramNode program)
+    {
         var scope = new HashSet<string>(StringComparer.Ordinal);
+        var errors = new List<string>();
+
         foreach (var node in program.Nodes)
         {
             if (node is FunctionNode f)
                 scope.Add(f.Name);
         }
-        Walk(program.Nodes, scope);
+
+        Walk(program.Nodes, scope, errors);
+        return errors;
     }
 
-    private static void Walk(IEnumerable<Node> nodes, HashSet<string> scope)
+    private static void Walk(IEnumerable<Node> nodes, HashSet<string> scope, List<string> errors)
     {
         foreach (var node in nodes)
         {
@@ -38,50 +49,50 @@ public static class SemanticAnalyzer
             {
                 case VarDeclNode v:
                     foreach (var id in ExtractIdentifiers(v.Value))
-                        EnsureDeclared(id, scope);
+                        EnsureDeclared(id, scope, errors);
                     scope.Add(v.Name);
                     break;
                 case PrintNode p:
                     foreach (var id in ExtractIdentifiers(p.Content))
-                        EnsureDeclared(id, scope);
+                        EnsureDeclared(id, scope, errors);
                     break;
                 case InputNode i:
                     scope.Add(i.VariableName);
                     break;
                 case ReturnNode r:
                     foreach (var id in ExtractIdentifiers(r.Expression))
-                        EnsureDeclared(id, scope);
+                        EnsureDeclared(id, scope, errors);
                     break;
                 case IfNode iff:
                     foreach (var id in ExtractIdentifiers(iff.Condition))
-                        EnsureDeclared(id, scope);
-                    WalkBlock(iff.ThenBody, scope);
-                    WalkBlock(iff.ElseBody, scope);
+                        EnsureDeclared(id, scope, errors);
+                    WalkBlock(iff.ThenBody, scope, errors);
+                    WalkBlock(iff.ElseBody, scope, errors);
                     break;
                 case WhileNode w:
                     foreach (var id in ExtractIdentifiers(w.Condition))
-                        EnsureDeclared(id, scope);
-                    WalkBlock(w.Body, scope);
+                        EnsureDeclared(id, scope, errors);
+                    WalkBlock(w.Body, scope, errors);
                     break;
                 case ForNode f:
                     foreach (var id in ExtractIdentifiers(f.From))
-                        EnsureDeclared(id, scope);
+                        EnsureDeclared(id, scope, errors);
                     foreach (var id in ExtractIdentifiers(f.To))
-                        EnsureDeclared(id, scope);
-                    WalkBlock(f.Body, ChildScope(scope, new[] { f.Iterator }));
+                        EnsureDeclared(id, scope, errors);
+                    WalkBlock(f.Body, ChildScope(scope, new[] { f.Iterator }), errors);
                     break;
                 case FunctionNode fn:
                     var fnScope = ChildScope(scope, fn.Parameters);
-                    Walk(fn.Body, fnScope);
+                    Walk(fn.Body, fnScope, errors);
                     break;
             }
         }
     }
 
-    private static void WalkBlock(List<Node> body, HashSet<string> parent)
+    private static void WalkBlock(List<Node> body, HashSet<string> parent, List<string> errors)
     {
         var scope = new HashSet<string>(parent, StringComparer.Ordinal);
-        Walk(body, scope);
+        Walk(body, scope, errors);
     }
 
     private static HashSet<string> ChildScope(HashSet<string> parent, IEnumerable<string> extra)
@@ -92,14 +103,14 @@ public static class SemanticAnalyzer
         return s;
     }
 
-    private static void EnsureDeclared(string id, HashSet<string> scope)
+    private static void EnsureDeclared(string id, HashSet<string> scope, List<string> errors)
     {
         if (char.IsDigit(id[0]))
             return;
         if (PseudoKeywords.Contains(id))
             return;
         if (!scope.Contains(id))
-            throw new SemanticException($"Необъявленная переменная или функция: «{id}».");
+            errors.Add($"Семантическая ошибка: необъявленная переменная или функция: «{id}».");
     }
 
     private static IEnumerable<string> ExtractIdentifiers(string expr)

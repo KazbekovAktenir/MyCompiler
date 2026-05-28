@@ -10,7 +10,7 @@
         "projectUniqueName": "/Users/aktenir/C#Projects/MyCompiler/MyCompiler.csproj",
         "projectName": "MyCompiler",
         "projectPath": "/Users/aktenir/C#Projects/MyCompiler/MyCompiler.csproj",
-        "packagesPath": "/var/folders/9p/l7c64n4d7xv077kgxmx0bpqw0000gn/T/cursor-sandbox-cache/b7a52ca4f36443d08d3e43a9da3a62a9/nuget",
+        "packagesPath": "/Users/aktenir/.nuget/packages/",
         "outputPath": "/Users/aktenir/C#Projects/MyCompiler/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -343,7 +343,7 @@
         "projectUniqueName": "/Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/MyCompiler.Tests.csproj",
         "projectName": "MyCompiler.Tests",
         "projectPath": "/Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/MyCompiler.Tests.csproj",
-        "packagesPath": "/var/folders/9p/l7c64n4d7xv077kgxmx0bpqw0000gn/T/cursor-sandbox-cache/b7a52ca4f36443d08d3e43a9da3a62a9/nuget",
+        "packagesPath": "/Users/aktenir/.nuget/packages/",
         "outputPath": "/Users/aktenir/C#Projects/MyCompiler/MyCompiler.Tests/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
